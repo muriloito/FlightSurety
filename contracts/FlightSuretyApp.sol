@@ -24,15 +24,22 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_TECHNICAL = 40;
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
 
+    // Consensus Min of airlines
+    uint8 AIRLINES_CONSENSUS_MIN = 4;
+    uint AIRLINE_FUND = 10 ether;
+
     address private contractOwner;          // Account used to deploy contract
 
     struct Flight {
         bool isRegistered;
         uint8 statusCode;
-        uint256 updatedTimestamp;        
+        uint256 updatedTimestamp;
         address airline;
     }
+
     mapping(bytes32 => Flight) private flights;
+
+    mapping(address => address[]) private airlineConsensus;
 
     // Data Contract
     FlightSuretyData appData;
@@ -65,6 +72,19 @@ contract FlightSuretyApp {
         _;
     }
 
+    modifier requireIsAirline() {
+        require(appData.isAirlineRegistered(msg.sender), "Address is not a registered Airline");
+        _;
+    }
+
+    /********************************************************************************************/
+    /*                                         EVENTS                                           */
+    /********************************************************************************************/
+
+    event AirlineFunded(address airline);
+    event AirlineRegistered(address airline, uint256 airlineCount, uint votes);
+
+
     /********************************************************************************************/
     /*                                       CONSTRUCTOR                                        */
     /********************************************************************************************/
@@ -91,20 +111,56 @@ contract FlightSuretyApp {
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
 
-  
+
    /**
     * @dev Add an airline to the registration queue
     *
-    */   
-    function registerAirline
-                            (   
-                            )
-                            external
-                            pure
-                            returns(bool success, uint256 votes)
+    */
+    function registerAirline (address airline) external requireIsOperational requireIsAirline
     {
-        return (success, 0);
+        require(!appData.isAirlineRegistered(airline), "Airline already registered");
+
+        uint airlineCount = appData.getAirlinesCount();
+
+        if (airlineCount < AIRLINES_CONSENSUS_MIN) {
+            airlineCount = airlineCount.add(1);
+            appData.registerAirline(airline);
+
+            emit AirlineRegistered(airline, airlineCount, 0);
+
+            return;
+        }
+
+        // check if the airline already votted
+        for (uint a = 0; a < airlineConsensus[airline].length; a++) {
+           if (airlineConsensus[airline][a] == msg.sender) {
+               return;
+           }
+        }
+
+        airlineConsensus[airline].push(msg.sender);
+
+        // check if airline has enough votes
+        if(airlineConsensus[airline].length >= airlineCount.div(2)) {
+            appData.registerAirline(airline);
+
+            airlineCount = airlineCount.add(1);
+
+            emit AirlineRegistered(airline, airlineCount, airlineConsensus[airline].length);
+        }
+
     }
+
+    function fundAirline() external payable requireIsAirline
+    {
+        require(!appData.isAirlineFunded(msg.sender), "Airline already funded");
+        require(msg.value >= AIRLINE_FUND, "Not enough to Fund");
+
+        appData.fundAirline(msg.sender);
+
+        emit AirlineFunded(msg.sender);
+    }
+
 
 
    /**
@@ -334,4 +390,10 @@ contract FlightSuretyApp {
 
 contract FlightSuretyData {
     function isOperational() external view returns(bool);
+
+    function registerAirline(address airline) external;
+    function fundAirline(address airline) external;
+    function isAirlineRegistered(address airline) external view returns (bool);
+    function isAirlineFunded(address airline) external view returns (bool);
+    function getAirlinesCount() external view returns (uint);
 }

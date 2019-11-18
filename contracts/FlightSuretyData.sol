@@ -13,6 +13,14 @@ contract FlightSuretyData {
     bool private operational = true;                                    // Blocks all state changes throughout the contract if false
     mapping(address => uint) authorizedContracts;
 
+    struct Airline {
+        bool registered;
+        bool funded;
+    }
+
+    mapping(address => Airline) airlines;
+    uint airlines_count = 0;
+
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
@@ -24,6 +32,9 @@ contract FlightSuretyData {
     */
     constructor () public {
         contractOwner = msg.sender;
+        // First airline is registered when contract is deployed
+        airlines[contractOwner] = Airline({registered: true, funded: true});
+        airlines_count = 1;
     }
 
     /********************************************************************************************/
@@ -95,15 +106,28 @@ contract FlightSuretyData {
     * @dev Add an airline to the registration queue
     *      Can only be called from FlightSuretyApp contract
     *
-    */   
-    function registerAirline
-                            (   
-                            )
-                            external
-                            pure
-    {
+    */
+    function registerAirline (address airline) external requireIsOperational isCallerAuthorized {
+        airlines[airline] = Airline({registered: true, funded : false});
+        airlines_count = airlines_count.add(1);
     }
 
+    function isAirlineRegistered (address airline) external view requireIsOperational returns (bool) {
+        return airlines[airline].registered;
+    }
+
+    function isAirlineFunded (address airline) external view requireIsOperational returns (bool) {
+        return airlines[airline].funded;
+    }
+
+    function fundAirline (address payable airline) external payable requireIsOperational isCallerAuthorized {
+        airline.transfer(msg.value);
+        airlines[airline].funded = true;
+    }
+
+    function getAirlinesCount() external view requireIsOperational returns (uint) {
+        return airlines_count;
+    }
 
    /**
     * @dev Buy insurance for a flight
