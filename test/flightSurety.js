@@ -153,4 +153,26 @@ it(`(airline) fund airlines`, async function () {
     assert.equal(result, true, "Airline not funded");
 });
 
+it(`(flight) register new flight`, async function () {
+    let airline = accounts[0];
+    let flightId = "1099";
+
+    await config.flightSuretyApp.registerFlight(flightId, {from: airline});
+    
+    let result = await config.flightSuretyData.isFlightRegistered.call(flightId);
+    assert.equal(result, true, "Airline not registered");
+});
+
+it(`(passenger) purchasing flight insurance`, async function () {
+    let passenger = accounts[6];
+    let flightId = "1099";
+    let amount = web3.utils.toWei("1", "ether");
+
+    await config.flightSuretyApp.buyInsurance(flightId, {from: passenger, value: amount});
+    
+    let result = await config.flightSuretyData.getInsuranceValue.call(passenger, flightId);
+    assert.equal(result, amount, "Insurance value not valid");
+});
+
+
 });

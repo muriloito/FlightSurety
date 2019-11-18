@@ -27,6 +27,8 @@ contract FlightSuretyApp {
     // Consensus Min of airlines
     uint8 AIRLINES_CONSENSUS_MIN = 4;
     uint AIRLINE_FUND = 10 ether;
+    uint INSURANCE_LIMIT = 1 ether;
+
 
     address private contractOwner;          // Account used to deploy contract
 
@@ -83,6 +85,7 @@ contract FlightSuretyApp {
 
     event AirlineFunded(address airline);
     event AirlineRegistered(address airline, uint256 airlineCount, uint votes);
+    event FlightRegistered(address airline, string flightId);
 
 
     /********************************************************************************************/
@@ -156,19 +159,32 @@ contract FlightSuretyApp {
         require(!appData.isAirlineFunded(msg.sender), "Airline already funded");
         require(msg.value >= AIRLINE_FUND, "Not enough to Fund");
 
+        msg.sender.transfer(msg.value);
+
         appData.fundAirline(msg.sender);
 
         emit AirlineFunded(msg.sender);
     }
 
+    function buyInsurance(string calldata flightId) external payable
+    {
+        require(msg.value > 0, "Insurance value can not be zero");
+        require(msg.value <= 1 ether, "Insurance limit is 1 ether");
 
+        msg.sender.transfer(msg.value);
+
+        appData.buy(msg.sender, flightId, msg.value);
+    }
 
    /**
     * @dev Register a future flight for insuring.
     *
     */
-    function registerFlight() external pure
+    function registerFlight(string calldata flightId) external
     {
+        appData.registerFlight(msg.sender, flightId);
+
+        emit FlightRegistered(msg.sender, flightId);
     }
 
    /**
@@ -340,4 +356,8 @@ contract FlightSuretyData {
     function isAirlineRegistered(address airline) external view returns (bool);
     function isAirlineFunded(address airline) external view returns (bool);
     function getAirlinesCount() external view returns (uint);
+
+    function registerFlight (address airline, string calldata flightId) external;
+
+    function buy (address payable passenger, string calldata flightId, uint amount) external payable;
 }
