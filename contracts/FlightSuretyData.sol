@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.0;
 
 import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -11,6 +11,7 @@ contract FlightSuretyData {
 
     address private contractOwner;                                      // Account used to deploy contract
     bool private operational = true;                                    // Blocks all state changes throughout the contract if false
+    mapping(address => uint) authorizedContracts;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -21,11 +22,7 @@ contract FlightSuretyData {
     * @dev Constructor
     *      The deploying account becomes contractOwner
     */
-    constructor
-                                (
-                                ) 
-                                public 
-    {
+    constructor () public {
         contractOwner = msg.sender;
     }
 
@@ -38,11 +35,10 @@ contract FlightSuretyData {
 
     /**
     * @dev Modifier that requires the "operational" boolean variable to be "true"
-    *      This is used on all state changing functions to pause the contract in 
+    *      This is used on all state changing functions to pause the contract in
     *      the event there is an issue that needs to be fixed
     */
-    modifier requireIsOperational() 
-    {
+    modifier requireIsOperational() {
         require(operational, "Contract is currently not operational");
         _;  // All modifiers require an "_" which indicates where the function body will be added
     }
@@ -50,9 +46,13 @@ contract FlightSuretyData {
     /**
     * @dev Modifier that requires the "ContractOwner" account to be the function caller
     */
-    modifier requireContractOwner()
-    {
+    modifier requireContractOwner() {
         require(msg.sender == contractOwner, "Caller is not contract owner");
+        _;
+    }
+
+    modifier isCallerAuthorized() {
+        require(authorizedContracts[msg.sender] == 1, "Unauthorized access (Caller)");
         _;
     }
 
@@ -64,12 +64,8 @@ contract FlightSuretyData {
     * @dev Get operating status of contract
     *
     * @return A bool that is the current operating status
-    */      
-    function isOperational() 
-                            public 
-                            view 
-                            returns(bool) 
-    {
+    */
+    function isOperational() public view returns(bool) {
         return operational;
     }
 
@@ -78,15 +74,17 @@ contract FlightSuretyData {
     * @dev Sets contract operations on/off
     *
     * When operational mode is disabled, all write transactions except for this one will fail
-    */    
-    function setOperatingStatus
-                            (
-                                bool mode
-                            ) 
-                            external
-                            requireContractOwner 
-    {
+    */
+    function setOperatingStatus (bool mode) external requireContractOwner {
         operational = mode;
+    }
+
+    function authorizeCaller(address dataContract) external requireIsOperational requireContractOwner {
+        authorizedContracts[dataContract] = 1;
+    }
+
+    function unauthorizeCaller(address dataContract) external requireIsOperational requireContractOwner {
+        authorizedContracts[dataContract] = 0;
     }
 
     /********************************************************************************************/
