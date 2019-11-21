@@ -171,10 +171,15 @@ contract FlightSuretyApp {
         require(msg.value > 0, "Insurance value can not be zero");
         require(msg.value <= 1 ether, "Insurance limit is 1 ether");
 
-        msg.sender.transfer(msg.value);
-
         appData.buy(msg.sender, flightId, msg.value);
     }
+
+    function withdrawalInsurance(string calldata flightId) external payable
+    {
+        uint amount = appData.withdrawal(msg.sender, flightId);
+        msg.sender.transfer(amount);
+    }
+
 
    /**
     * @dev Register a future flight for insuring.
@@ -349,6 +354,9 @@ contract FlightSuretyApp {
 
 // endregion
 
+    function() external payable
+    {
+    }
 }
 
 contract FlightSuretyData {
@@ -364,4 +372,5 @@ contract FlightSuretyData {
 
     function buy (address payable passenger, string calldata flightId, uint amount) external payable;
     function creditInsurees (string calldata flightId) external;
+    function withdrawal (address passenger, string calldata flightId) external payable  returns (uint256);
 }

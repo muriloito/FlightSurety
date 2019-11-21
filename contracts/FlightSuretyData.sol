@@ -218,12 +218,20 @@ contract FlightSuretyData {
      *  @dev Transfers eligible payout funds to insuree
      *
     */
-    function pay
-                            (
-                            )
-                            external
-                            pure
+    function withdrawal (address passenger, string calldata flightId) external payable requireIsOperational isCallerAuthorized returns (uint256)
     {
+        uint256 amount = 0;
+        bytes32 insuranceKey = getInsuranceKey(passenger, flightId);
+
+        for (uint8 i = 0; i < insurances[flightId].length; i++) {
+            if (insurances[flightId][i].key == insuranceKey) {
+                amount = amount.add(insurances[flightId][i].credit);
+                // require(amount > 0, "No value to be paid");
+                delete insurances[flightId][i];
+            }
+        }
+
+        return amount;
     }
 
    /**
@@ -239,7 +247,7 @@ contract FlightSuretyData {
     {
     }
 
-    function getFlightKey (address airline, string memory flight, uint256 timestamp) pure internal returns(bytes32) 
+    function getFlightKey (address airline, string memory flight, uint256 timestamp) internal pure returns(bytes32)
     {
         return keccak256(abi.encodePacked(airline, flight, timestamp));
     }

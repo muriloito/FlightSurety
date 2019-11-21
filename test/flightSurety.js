@@ -10,6 +10,9 @@ contract('Flight Surety Tests', async (accounts) => {
 
     await config.flightSuretyData.authorizeCaller(config.flightSuretyApp.address);
     await config.flightSuretyData.authorizeCaller(accounts[0]);
+
+    let amount = web3.utils.toWei("5", "ether");
+    web3.eth.sendTransaction({from: accounts[0], to: config.flightSuretyApp.address, value: amount});
   });
 
   /****************************************************************************************/
@@ -181,6 +184,17 @@ it(`(passenger) credit flight insurance`, async function () {
     let creditExpected = web3.utils.toWei("1.5", "ether");
 
     await config.flightSuretyData.creditInsurees(flightId, {from: accounts[0]});
+
+    let result = await config.flightSuretyData.getInsuranceCreditValue.call(passenger, flightId);
+    assert.equal(result, creditExpected, "Insurance credit value not valid");
+});
+
+it(`(passenger) withdrawal flight insurance`, async function () {
+    let passenger = accounts[6];
+    let flightId = "1099";
+    let creditExpected = 0
+
+    await config.flightSuretyApp.withdrawalInsurance(flightId, {from: passenger});
 
     let result = await config.flightSuretyData.getInsuranceCreditValue.call(passenger, flightId);
     assert.equal(result, creditExpected, "Insurance credit value not valid");
