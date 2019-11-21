@@ -53,4 +53,25 @@ export default class Contract {
                 callback(error, payload);
             });
     }
+
+    buy(options, callback) {
+        let self = this;
+        let value = document.querySelector("#valueStep").value;
+        if (!value) {
+            return;
+        }
+        if (value > 1) {
+            document.querySelector("#valueStep").value = 1;
+            value = 1;
+        }
+
+        let processedValue = self.web3.utils.toWei(value+"");
+
+        self.flightSuretyApp.methods
+            .buyInsurance(options.flight)
+            .send({ from: self.owner, value: processedValue}, (error, result) => {
+                callback(error ? error.message : `User ${self.owner} paid ${processedValue} on flight's ${options.flight} surety`, options);
+            });
+
+    }
 }
