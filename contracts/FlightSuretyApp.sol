@@ -191,8 +191,11 @@ contract FlightSuretyApp {
     * @dev Called after oracle has updated flight status
     *
     */
-    function processFlightStatus (address airline, string memory flight, uint256 timestamp, uint8 statusCode) internal pure
+    function processFlightStatus (string memory flight, uint8 statusCode) internal
     {
+        if (statusCode == STATUS_CODE_LATE_AIRLINE) {
+            appData.creditInsurees(flight);
+        }
     }
 
 
@@ -300,7 +303,7 @@ contract FlightSuretyApp {
             emit FlightStatusInfo(airline, flight, timestamp, statusCode);
 
             // Handle flight status as appropriate
-            processFlightStatus(airline, flight, timestamp, statusCode);
+            processFlightStatus(flight, statusCode);
         }
     }
 
@@ -360,4 +363,5 @@ contract FlightSuretyData {
     function registerFlight (address airline, string calldata flightId) external;
 
     function buy (address payable passenger, string calldata flightId, uint amount) external payable;
+    function creditInsurees (string calldata flightId) external;
 }

@@ -28,7 +28,16 @@ contract FlightSuretyData {
     }
     mapping(string => Flight) private flights;
 
-    mapping(bytes32 => uint256) insurances;
+    uint256 INSURANCE_CREDIT_FACTOR = 15;
+
+    struct Insurance {
+        bytes32 key;
+        uint256 value;
+        uint256 credit;
+    }
+    // how to use:
+    // insurances[ flightID ] returns a list of insureances bought by passengers: insuranceKey => insuranceValue
+    mapping(string => Insurance[]) insurances;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -159,7 +168,28 @@ contract FlightSuretyData {
 
     function getInsuranceValue(address passenger, string calldata flightId) external view requireIsOperational returns (uint) {
         bytes32 insuranceKey = getInsuranceKey(passenger, flightId);
-        return insurances[insuranceKey];
+        Insurance[] memory insurancesFlight = insurances[flightId];
+
+        for (uint8 i = 0; i < insurancesFlight.length; i++) {
+            if (insurancesFlight[i].key == insuranceKey) {
+                return insurancesFlight[i].value;
+            }
+        }
+
+        return 0;
+    }
+
+    function getInsuranceCreditValue(address passenger, string calldata flightId) external view requireIsOperational returns (uint) {
+        bytes32 insuranceKey = getInsuranceKey(passenger, flightId);
+        Insurance[] memory insurancesFlight = insurances[flightId];
+
+        for (uint8 i = 0; i < insurancesFlight.length; i++) {
+            if (insurancesFlight[i].key == insuranceKey) {
+                return insurancesFlight[i].credit;
+            }
+        }
+
+        return 0;
     }
 
 
@@ -170,20 +200,19 @@ contract FlightSuretyData {
     function buy (address passenger, string calldata flightId, uint amount) external requireIsOperational isCallerAuthorized
     {
         bytes32 insuranceKey = getInsuranceKey(passenger, flightId);
-        insurances[insuranceKey] = amount;
+        insurances[flightId].push(Insurance({key: insuranceKey, value: amount, credit: 0}));
     }
 
     /**
      *  @dev Credits payouts to insurees
     */
-    function creditInsurees
-                                (
-                                )
-                                external
-                                pure
+    function creditInsurees (string calldata flightId) external requireIsOperational isCallerAuthorized
     {
+        for (uint8 i = 0; i < insurances[flightId].length; i++) {
+            insurances[flightId][i].credit = insurances[flightId][i].value.mul(15).div(10);
+        }
     }
-    
+
 
     /**
      *  @dev Transfers eligible payout funds to insuree
